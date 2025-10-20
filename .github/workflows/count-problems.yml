@@ -1,0 +1,65 @@
+name: Count LeetCode Problems
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'easy/**'
+      - 'medium/**'
+      - 'hard/**'
+  workflow_dispatch:
+
+jobs:
+  count-problems:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Count problems and update README
+        run: |
+          # Count Python solution files in each difficulty folder
+          EASY_COUNT=$(find easy -name "*.py" -type f 2>/dev/null | wc -l)
+          MEDIUM_COUNT=$(find medium -name "*.py" -type f 2>/dev/null | wc -l)
+          HARD_COUNT=$(find hard -name "*.py" -type f 2>/dev/null | wc -l)
+          TOTAL_COUNT=$((EASY_COUNT + MEDIUM_COUNT + HARD_COUNT))
+          
+          echo "Found problems:"
+          echo "  Easy: $EASY_COUNT"
+          echo "  Medium: $MEDIUM_COUNT"
+          echo "  Hard: $HARD_COUNT"
+          echo "  Total: $TOTAL_COUNT"
+          
+          # Update badges in README.md
+          sed -i "s/Total_Problems-[0-9]*-blue/Total_Problems-${TOTAL_COUNT}-blue/" README.md
+          sed -i "s/Easy-[0-9]*-green/Easy-${EASY_COUNT}-green/" README.md
+          sed -i "s/Medium-[0-9]*-yellow/Medium-${MEDIUM_COUNT}-yellow/" README.md
+          sed -i "s/Hard-[0-9]*-red/Hard-${HARD_COUNT}-red/" README.md
+          
+          # Update last updated timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          sed -i "s/\*\*Last Updated:\*\*.*/\*\*Last Updated:\*\* ${TIMESTAMP}/" README.md
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update problem count and timestamp"
+            git push
+          fi
